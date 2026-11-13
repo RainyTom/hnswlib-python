@@ -16,9 +16,9 @@ index.add_items(vectors, ids=None)
 labels, distances = index.knn_query(queries, k=100)
 ```
 
-`build_backend="numpy"` accelerates only offline index construction by
-batching distances with NumPy; the query path remains pure Python.  The default
-is `"python"` for a dependency-free build.
+`build_backend="numpy"` uses vectorized NumPy distances for both index
+construction and query search; the HNSW graph traversal remains Python.  The
+default is `"python"` for a dependency-free build.
 
 ## Alignment with upstream
 

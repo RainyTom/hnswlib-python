@@ -118,7 +118,7 @@ class HierarchicalNSW(AlgorithmInterface):
         self.max_level = -1
         # Optional offline build acceleration: NumPy is used only for batched
         # distances during index construction; query/search stays pure Python.
-        self.build_numpy = False
+        self.use_numpy = False
         self.build_X = None
 
     @property
@@ -127,17 +127,22 @@ class HierarchicalNSW(AlgorithmInterface):
 
     def set_build_data(self, data) -> None:
         """Preload all vectors for the optional NumPy build backend."""
-        if not self.build_numpy:
+        if not self.use_numpy:
             return
         import numpy as np
 
-        self.build_X = np.ascontiguousarray(data, dtype=np.float32)
+        arr = np.asarray(data, dtype=np.float32)
+        if self.space in ("cosine", "ip"):
+            norms = np.linalg.norm(arr, axis=1, keepdims=True)
+            norms[norms == 0] = 1.0
+            arr = arr / norms
+        self.build_X = np.ascontiguousarray(arr, dtype=np.float32)
 
     def _distance(self, a, b) -> float:
         return self.space_obj.distance(a, b)
 
     def _distance_many(self, query, ids: list[int], construction: bool) -> list[float]:
-        if construction and self.build_numpy and self.build_X is not None and ids:
+        if self.use_numpy and self.build_X is not None and ids:
             import numpy as np
 
             q = np.asarray(query, dtype=np.float32)
@@ -286,8 +291,11 @@ class HierarchicalNSW(AlgorithmInterface):
             changed = True
             while changed:
                 changed = False
-                for candidate in self.graph[layer].get(current, []):
-                    distance = self._distance(q, self.vectors[candidate])
+                neighbours = self.graph[layer].get(current, [])
+                if not neighbours:
+                    break
+                distances = self._distance_many(q, neighbours, False)
+                for candidate, distance in zip(neighbours, distances):
                     if distance < current_dist:
                         current, current_dist = candidate, distance
                         changed = True

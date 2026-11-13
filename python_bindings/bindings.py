@@ -32,7 +32,7 @@ class Index:
             random_seed=int(random_seed),
             level_rng=level_rng,
         )
-        self._index.build_numpy = build_backend == "numpy"
+        self._index.use_numpy = build_backend == "numpy"
 
     def set_ef(self, ef: int) -> None:
         self._require().ef = int(ef)
