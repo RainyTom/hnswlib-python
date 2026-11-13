@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from array import array
+from operator import mul
 
 
 class InnerProductSpace:
@@ -11,7 +12,7 @@ class InnerProductSpace:
         self.dim = int(dim)
 
     def distance(self, a, b) -> float:
-        return 1.0 - sum(x * y for x, y in zip(a, b))
+        return 1.0 - sum(map(mul, a, b))
 
     def normalize(self, vector) -> array:
         values = [float(x) for x in vector]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from array import array
+from operator import sub
 
 
 class L2Space:
@@ -10,7 +11,7 @@ class L2Space:
         self.dim = int(dim)
 
     def distance(self, a, b) -> float:
-        return sum((x - y) * (x - y) for x, y in zip(a, b))
+        return sum(d * d for d in map(sub, a, b))
 
     def normalize(self, vector) -> array:
         return array("f", [float(x) for x in vector])

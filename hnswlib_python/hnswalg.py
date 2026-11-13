@@ -116,13 +116,33 @@ class HierarchicalNSW(AlgorithmInterface):
         self.graph: list[dict[int, list[int]]] = [{}]
         self.entry: int | None = None
         self.max_level = -1
+        # Optional offline build acceleration: NumPy is used only for batched
+        # distances during index construction; query/search stays pure Python.
+        self.build_numpy = False
+        self.build_X = None
 
     @property
     def count(self) -> int:
         return len(self.vectors)
 
+    def set_build_data(self, data) -> None:
+        """Preload all vectors for the optional NumPy build backend."""
+        if not self.build_numpy:
+            return
+        import numpy as np
+
+        self.build_X = np.ascontiguousarray(data, dtype=np.float32)
+
     def _distance(self, a, b) -> float:
         return self.space_obj.distance(a, b)
+
+    def _distance_many(self, query, ids: list[int], construction: bool) -> list[float]:
+        if construction and self.build_numpy and self.build_X is not None and ids:
+            import numpy as np
+
+            q = np.asarray(query, dtype=np.float32)
+            return (1.0 - self.build_X[ids] @ q).tolist()
+        return [self._distance(query, self.vectors[i]) for i in ids]
 
     def _random_level(self) -> int:
         u = max(self.rng.uniform(), 1e-12)
@@ -134,8 +154,11 @@ class HierarchicalNSW(AlgorithmInterface):
         changed = True
         while changed:
             changed = False
-            for candidate in self.graph[layer].get(current, []):
-                distance = self._distance(query, self.vectors[candidate])
+            neighbours = self.graph[layer].get(current, [])
+            if not neighbours:
+                break
+            distances = self._distance_many(query, neighbours, True)
+            for candidate, distance in zip(neighbours, distances):
                 if distance < current_dist:
                     current, current_dist = candidate, distance
                     changed = True
@@ -152,11 +175,16 @@ class HierarchicalNSW(AlgorithmInterface):
             current_dist, current = heapq.heappop(candidates)
             if not construction and current_dist > -top[0][0]:
                 break
-            for neighbour in self.graph[layer].get(current, []):
-                if neighbour in visited:
-                    continue
+            fresh = [
+                neighbour
+                for neighbour in self.graph[layer].get(current, [])
+                if neighbour not in visited
+            ]
+            if not fresh:
+                continue
+            distances = self._distance_many(query, fresh, construction)
+            for neighbour, nd in zip(fresh, distances):
                 visited.add(neighbour)
-                nd = self._distance(query, self.vectors[neighbour])
                 if len(top) < ef or nd < -top[0][0]:
                     heapq.heappush(candidates, (nd, neighbour))
                     heapq.heappush(top, (-nd, neighbour))
@@ -200,7 +228,12 @@ class HierarchicalNSW(AlgorithmInterface):
                     (self._distance(self.vectors[node], self.vectors[neighbour]), node)
                 ]
                 merged += [
-                    (self._distance(self.vectors[other], self.vectors[neighbour]), other)
+                    (
+                        self._distance(
+                            self.vectors[other], self.vectors[neighbour]
+                        ),
+                        other,
+                    )
                     for other in links
                 ]
                 kept = self._heuristic(merged, max_degree)

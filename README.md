@@ -5,15 +5,20 @@ Pure-Python port of the core `HierarchicalNSW` implementation from
 algorithm and the Python binding API used by table-union-search experiments:
 
 ```python
-from hnswlib_python import Index
+from python_bindings import Index
 
 index = Index(space="cosine", dim=768)
 index.init_index(max_elements=len(vectors), M=32, ef_construction=40,
-                 random_seed=100, level_rng="mt19937")
+                 random_seed=100, level_rng="mt19937",
+                 build_backend="numpy")
 index.set_ef(10)
 index.add_items(vectors, ids=None)
 labels, distances = index.knn_query(queries, k=100)
 ```
+
+`build_backend="numpy"` accelerates only offline index construction by
+batching distances with NumPy; the query path remains pure Python.  The default
+is `"python"` for a dependency-free build.
 
 ## Alignment with upstream
 

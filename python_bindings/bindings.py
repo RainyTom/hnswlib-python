@@ -21,6 +21,7 @@ class Index:
         random_seed: int = 100,
         allow_replace_deleted: bool = False,
         level_rng: str = "mt19937",
+        build_backend: str = "python",
     ) -> None:
         self._index = HierarchicalNSW(
             dim=self.dim,
@@ -31,6 +32,7 @@ class Index:
             random_seed=int(random_seed),
             level_rng=level_rng,
         )
+        self._index.build_numpy = build_backend == "numpy"
 
     def set_ef(self, ef: int) -> None:
         self._require().ef = int(ef)
@@ -40,6 +42,7 @@ class Index:
 
     def add_items(self, data, ids=None, num_threads: int = -1, **kwargs) -> None:
         index = self._require()
+        index.set_build_data(data)
         if ids is None:
             ids = list(range(index.count, index.count + len(data)))
         for vector, label in zip(data, ids):
