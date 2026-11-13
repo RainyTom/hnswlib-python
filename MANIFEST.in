@@ -1,0 +1,2 @@
+recursive-include hnswlib_python *.py
+recursive-include python_bindings *.py

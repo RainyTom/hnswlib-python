@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hnswlib-python"
+version = "0.1.0"
+description = "Pure-Python port of nmslib/hnswlib's HierarchicalNSW"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [{name = "hnswlib-python contributors"}]
+
+[tool.setuptools.packages.find]
+include = ["hnswlib_python*", "python_bindings*"]
+namespaces = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
